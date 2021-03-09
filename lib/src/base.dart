@@ -124,12 +124,6 @@ abstract class BaseVC extends ViewCtr {
   ///页面的背景颜色,透明,可以制作半透明的控制器
   Color? mBackGroudColor;
 
-  /// realBuildWidget 是否返回 Scaffold 还是 MaterialApp
-  bool get mViewHasApp => false;
-
-  ///是否已经添加了导航视图,Flutter如果要支持导航,需要顶层为 StatelessWidget
-  bool mHasNavView = false;
-
   ///当前控制器是否是根控制器
   bool mIsNavRootVC = false;
 
@@ -155,6 +149,8 @@ abstract class BaseVC extends ViewCtr {
     ///这里如果是完全没有导航栏的项目,返回 Scaffold ,如果有导航栏又需要全屏HUD就需要MaterialApp
     ///如果有了 MaterialApp 导航相关估计也有问题
 
+    if (!mIsNavRootVC) return t;
+
     return MaterialApp(
       title: BaseVC.mAppname,
       home: t,
@@ -177,7 +173,7 @@ abstract class BaseVC extends ViewCtr {
   }
 
   ///监听导航变化
-  List<NavigatorObserver> getNavObservers();
+  List<NavigatorObserver> getNavObservers() => [];
 
   ///当获取到区域信息之后的回调
   Locale? onGetLocalInfo(Locale? locale, Iterable<Locale>? supportedLocales) {
@@ -190,7 +186,7 @@ abstract class BaseVC extends ViewCtr {
   }
 
   ///支持哪些地域
-  List<Locale> getSupportedLocals();
+  List<Locale> getSupportedLocals() => [Locale('zh'), Locale('en')];
 
   ///当前系统的语言,默认英语
   static String mSysLang = 'en';
@@ -263,13 +259,13 @@ class BaseElement extends StatefulElement {
 
   @override
   void performRebuild() {
-    late Element _old;
+    Element? _old;
     visitChildren((element) {
       _old = element;
     });
 
     super.performRebuild();
-    late Element _new;
+    Element? _new;
     visitChildren((element) {
       _new = element;
     });
