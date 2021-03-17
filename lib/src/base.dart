@@ -8,7 +8,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:logger/logger.dart';
 
-///视图控制器.
+///视图控制器,定义基本的衔接问题.
 abstract class ViewCtr {
   BuildContext? _context;
 
@@ -34,7 +34,7 @@ abstract class ViewCtr {
   Widget realBuildWidget(BuildContext context);
 
   ///导出控制器真正的布局数据
-  Widget getView({Key? key}) => BaseView(key: key, vc: this);
+  Widget getView({Key? key});
 
   ///控制器更新数据,就是setstate
   void updateUI() => _state?.setState(() {});
@@ -92,7 +92,7 @@ abstract class ViewCtr {
   }
 }
 
-///基础控制器
+///基础控制器,添加常用的方法
 abstract class BaseVC extends ViewCtr {
   static String mAppname = "APP_NAME";
 
@@ -106,14 +106,8 @@ abstract class BaseVC extends ViewCtr {
   vclog(String msg) => _logger.d(msg);
 
   //获取控制器对应的视图
-  Widget getView({Key? key}) {
-    //如果是导航的根view,那么需要包裹一层导航视图,主要是最外层必须StatelessWidget,
-    if (mIsNavRootVC)
-      return BaseNavView(vc: this, view: BaseView(key: key, vc: this));
-
-    //如果已经外层有了导航视图,那么这里不需要包裹导航视图了,普通页面都是这个
-    return BaseView(key: key, vc: this);
-  }
+  @override
+  Widget getView({Key? key}) => BaseView(key: key, vc: this);
 
   ///创建顶部导航栏
   PreferredSizeWidget? makeTopBar(BuildContext context) => null;
@@ -124,8 +118,7 @@ abstract class BaseVC extends ViewCtr {
   ///页面的背景颜色,透明,可以制作半透明的控制器
   Color? mBackGroudColor;
 
-  ///当前控制器是否是根控制器
-  bool mIsNavRootVC = false;
+  bool get mIsNavVC => _mNavCtr == this;
 
   ///创建主要的控件部分,导航栏,tabbar,返回按钮,右侧按钮,标题等,底部tabbar由外部创建传入即可
   Widget realBuildWidget(BuildContext context) {
@@ -143,33 +136,11 @@ abstract class BaseVC extends ViewCtr {
       fit: StackFit.expand,
       alignment: Alignment.center,
     );
+    return t;
 
-    /// mViewHasApp 控制这个,
     /// 如果返回的是  MaterialApp 那么HUD可以全屏,否则HUD无法遮住导航栏,
     ///这里如果是完全没有导航栏的项目,返回 Scaffold ,如果有导航栏又需要全屏HUD就需要MaterialApp
     ///如果有了 MaterialApp 导航相关估计也有问题
-
-    if (!mIsNavRootVC) return t;
-
-    return MaterialApp(
-      title: BaseVC.mAppname,
-      home: t,
-      theme: getThemeData(context),
-      debugShowCheckedModeBanner: mShowDebugBanner,
-
-      ///这玩意没搞懂~~,
-      localizationsDelegates: [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        //奇葩问题,
-        //https://blog.csdn.net/julystroy/article/details/90231588
-        const FallbackCupertinoLocalisationsDelegate(),
-      ],
-      localeResolutionCallback: onGetLocalInfo,
-      supportedLocales: getSupportedLocals(),
-      navigatorObservers: getNavObservers(),
-      //locale: ,先不考虑那么复杂的情况,本地这个就先不管了,遇到书写顺序有问题的再说
-    );
   }
 
   ///监听导航变化
@@ -242,6 +213,9 @@ abstract class BaseVC extends ViewCtr {
   ///页面名字,用于统计
   late String mPageName;
 
+  ///用于路由的页面KEY
+  String get mPageKey => mPageName;
+
   ///左边返回按钮被点击之后
   void onLeftBtClicked() {}
 
@@ -252,6 +226,230 @@ abstract class BaseVC extends ViewCtr {
   List mDataArr = [];
   //当前页码
   int mPage = 0;
+
+  BaseNavVC? _mNavCtr;
+
+  ///PUSH到指定VC,并且有返回异步返回值
+  Future<dynamic> pushToVC(BaseVC to) {
+    if (_mNavCtr == null) {
+      log("没有导航控制器");
+      return Future.value(null);
+    }
+    to._mNavCtr = _mNavCtr;
+    return _mNavCtr!.pushToVC(to);
+  }
+
+  ///返回上一级,true表示成功,false表示无法返回,v默认是mRetVal
+  bool popBack([dynamic? v]) {
+    if (v != null) mRetVal = v;
+    if (_mNavCtr == null) {
+      log("没有导航控制器");
+      return false;
+    }
+    return _mNavCtr!.popBack(mRetVal);
+  }
+
+  ///PUSH到指定VC,并且有返回异步返回值,淡入动画,
+  Future<dynamic> pushToVCFade(BaseVC to) {
+    if (_mNavCtr == null) {
+      log("没有导航控制器");
+      return Future.value(null);
+    }
+    to._mNavCtr = _mNavCtr;
+    return _mNavCtr!.pushToVCFade(to);
+  }
+}
+
+///基础的导航控制器
+class BaseNavVC extends BaseVC {
+  ///这个导航控制器的根视图
+  final BaseVC mRootVC;
+  late final BaseRouterDelegate mRouterDelegate;
+  BaseNavVC(this.mRootVC) {
+    this.mRootVC._mNavCtr = this;
+    mRouterDelegate = BaseRouterDelegate(this);
+    _mPages = [RouterPage.createRouterPageFromVC(mRootVC)];
+  }
+
+  late List<RouterPage> _mPages;
+
+  @override
+  Widget realBuildWidget(BuildContext context) {
+    return MaterialApp.router(
+      title: BaseVC.mAppname,
+      theme: getThemeData(context),
+      debugShowCheckedModeBanner: mShowDebugBanner,
+
+      ///这玩意没搞懂~~,
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        //奇葩问题,
+        //https://blog.csdn.net/julystroy/article/details/90231588
+        const FallbackCupertinoLocalisationsDelegate(),
+      ],
+      localeResolutionCallback: onGetLocalInfo,
+      supportedLocales: getSupportedLocals(),
+      //locale: ,先不考虑那么复杂的情况,本地这个就先不管了,遇到书写顺序有问题的再说
+      routerDelegate: mRouterDelegate,
+      routeInformationParser: BaseRouteInformationParser(),
+    );
+  }
+
+  /*路由代理 截获*/
+  Widget rbuild(BuildContext context) {
+    return Navigator(
+      key: mRouterDelegate.navigatorKey,
+      pages: _mPages,
+      onPopPage: _onPopPage,
+    );
+  }
+
+  ///这里截获的是导航栏上面的返回按钮
+  bool _onPopPage(Route<dynamic> route, dynamic result) {
+    // if (_mPages.length <= 1) return false;
+    // _mPages.remove(route.settings);
+    // mRouterDelegate.notifyListeners();
+    route.didPop(result);
+    return popBack(result);
+  }
+
+  Future<bool> rpopRoute() {
+    return Future.value(popBack(null));
+  }
+
+  /*路由代理 截获*/
+  Future<dynamic> pushToVC(BaseVC to) {
+    RouterPage p = RouterPage.createRouterPageFromVC(to);
+    _mPages.add(p);
+    _mPages = _mPages.toList();
+    mRouterDelegate.notifyListeners();
+    return p.getPopValue;
+  }
+
+  ///退回上一级,返回true表示已经退回,否则无法退回
+  bool popBack([dynamic? v]) {
+    if (_mPages.length <= 1) return false;
+    RouterPage p = _mPages.removeLast();
+    _mPages = _mPages.toList();
+    mRouterDelegate.notifyListeners();
+    p.doPop(v);
+    return true;
+  }
+
+  ///PUSH到指定VC,并且有返回异步返回值,淡入动画,
+  Future<dynamic> pushToVCFade(BaseVC to) {
+    RouterPage p = RouterPage.createRouterPageFromVCFade(to);
+    _mPages.add(p);
+    _mPages = _mPages.toList();
+    mRouterDelegate.notifyListeners();
+    return p.getPopValue;
+  }
+
+  @override
+  Widget makePageBody(BuildContext context) {
+    // TODO: implement makePageBody
+    throw UnimplementedError();
+  }
+
+  Future<void> rsetNewRoutePath(String configuration) {
+    // TODO: implement setNewRoutePath
+    throw UnimplementedError();
+  }
+
+  Future<void> rsetInitialRoutePath(String configuration) {
+    return SynchronousFuture<void>(null);
+  }
+}
+
+///路由代理
+class BaseRouterDelegate extends RouterDelegate<String>
+    with PopNavigatorRouterDelegateMixin<String>, ChangeNotifier {
+  final BaseNavVC vc;
+
+  BaseRouterDelegate(this.vc);
+
+  @override
+  GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  Widget build(BuildContext context) => vc.rbuild(context);
+
+  @override
+  Future<bool> popRoute() => vc.rpopRoute();
+
+  @override
+  Future<void> setInitialRoutePath(String configuration) =>
+      vc.rsetInitialRoutePath(configuration);
+
+  @override
+  Future<void> setNewRoutePath(String configuration) =>
+      vc.rsetNewRoutePath(configuration);
+}
+
+///路由数据解析
+class BaseRouteInformationParser extends RouteInformationParser<String> {
+  @override
+  Future<String> parseRouteInformation(RouteInformation routeInformation) {
+    return SynchronousFuture(routeInformation.location ?? "/");
+  }
+
+  @override
+  RouteInformation restoreRouteInformation(String configuration) {
+    return RouteInformation(location: configuration);
+  }
+}
+
+typedef RouterPageCreateFunc = Route Function(
+    BuildContext context, BaseVC vc, RouterPage page);
+
+///页面对象
+class RouterPage extends Page {
+  final RouterPageCreateFunc routerCreator;
+  final BaseVC vc;
+  final Completer _comp = Completer();
+  RouterPage(LocalKey key, this.vc, this.routerCreator) : super(key: key);
+
+  @factory
+  static RouterPage createRouterPageFromVC(BaseVC vc) {
+    return RouterPage(
+        ValueKey(vc.mPageKey),
+        vc,
+        (context, vcc, page) => MaterialPageRoute(
+              settings: page,
+              maintainState: true,
+              builder: (context) => vcc.getView(),
+            ));
+  }
+
+  @factory
+  static RouterPage createRouterPageFromVCFade(BaseVC vc) {
+    return RouterPage(
+        ValueKey(vc.mPageKey),
+        vc,
+        (context, vcc, page) => PageRouteBuilder(
+              settings: page,
+              maintainState: true,
+              transitionDuration: Duration(milliseconds: 500),
+              pageBuilder: (context, animation, secondaryAnimation) {
+                return new FadeTransition(
+                  //使用渐隐渐入过渡,
+                  opacity: animation,
+                  child: vcc.getView(), //路由B
+                );
+              },
+            ));
+  }
+
+  ///在PUSH的时候等待 返回值
+  Future<dynamic> get getPopValue => _comp.future;
+
+  ///真正准备返回了,设置返回值回去了
+  void doPop(dynamic? v) => _comp.complete(v);
+
+  @override
+  Route createRoute(BuildContext context) =>
+      this.routerCreator(context, vc, this);
 }
 
 class BaseElement extends StatefulElement {
@@ -288,29 +486,9 @@ class BaseView extends StatefulWidget {
 
   @override
   State<BaseView> createState() => BaseState();
+
   @override
   StatefulElement createElement() => BaseElement(this);
-}
-
-///导航View,
-///主要是外层需要包裹 StatelessWidget的组件..
-class BaseNavView extends StatelessWidget {
-  final BaseView view;
-  final Key? key;
-  final ViewCtr vc;
-  BaseNavView({required this.vc, required this.view, this.key})
-      : super(key: key);
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-        title: BaseVC.mAppname,
-        home: view,
-        debugShowCheckedModeBanner: vc.mShowDebugBanner,
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ));
-  }
 }
 
 ///状态中间件....
