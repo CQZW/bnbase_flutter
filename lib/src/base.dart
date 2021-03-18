@@ -258,9 +258,20 @@ abstract class BaseVC extends ViewCtr {
     to._mNavCtr = _mNavCtr;
     return _mNavCtr!.pushToVCFade(to);
   }
+
+  ///半透明VC,动画从下到上
+  Future<dynamic> pushToTransparentVCUpTo(BaseVC to) {
+    if (_mNavCtr == null) {
+      log("没有导航控制器");
+      return Future.value(null);
+    }
+    to._mNavCtr = _mNavCtr;
+    return _mNavCtr!.pushToTransparentVCUpTo(to);
+  }
 }
 
 ///基础的导航控制器
+///目前其实我还是没太懂2.0的导航......
 class BaseNavVC extends BaseVC {
   ///这个导航控制器的根视图
   final BaseVC mRootVC;
@@ -319,12 +330,17 @@ class BaseNavVC extends BaseVC {
   }
 
   /*路由代理 截获*/
+  ///PUSH到控制器
   Future<dynamic> pushToVC(BaseVC to) {
-    RouterPage p = RouterPage.createRouterPageFromVC(to);
-    _mPages.add(p);
+    return pushToPage(RouterPage.createRouterPageFromVC(to));
+  }
+
+  ///PUSH到路由页面
+  Future<dynamic> pushToPage(RouterPage page) {
+    _mPages.add(page);
     _mPages = _mPages.toList();
     mRouterDelegate.notifyListeners();
-    return p.getPopValue;
+    return page.getPopValue;
   }
 
   ///退回上一级,返回true表示已经退回,否则无法退回
@@ -339,11 +355,12 @@ class BaseNavVC extends BaseVC {
 
   ///PUSH到指定VC,并且有返回异步返回值,淡入动画,
   Future<dynamic> pushToVCFade(BaseVC to) {
-    RouterPage p = RouterPage.createRouterPageFromVCFade(to);
-    _mPages.add(p);
-    _mPages = _mPages.toList();
-    mRouterDelegate.notifyListeners();
-    return p.getPopValue;
+    return pushToPage(RouterPage.createRouterPageFromVCFade(to));
+  }
+
+  ///半透明VC,动画从下到上
+  Future<dynamic> pushToTransparentVCUpTo(BaseVC to) {
+    return pushToPage(RouterPage.createRouterPageFromVCTransUpTo(to));
   }
 
   @override
@@ -439,6 +456,24 @@ class RouterPage extends Page {
                 );
               },
             ));
+  }
+
+  @factory
+  static RouterPage createRouterPageFromVCTransUpTo(BaseVC vc) {
+    return RouterPage(
+        ValueKey(vc.mPageKey),
+        vc,
+        (context, vcc, page) => CustomTransitionRoute((context) => vc.getView(),
+                transitBuilder:
+                    (context, animation, secondaryAnimation, child) {
+              return SlideTransition(
+                position: Tween<Offset>(
+                        begin: Offset(0.0, 1.0), end: Offset(0.0, 0.0))
+                    .animate(CurvedAnimation(
+                        parent: animation, curve: Curves.fastOutSlowIn)),
+                child: child,
+              );
+            }, settings: page));
   }
 
   ///在PUSH的时候等待 返回值
