@@ -16,12 +16,39 @@ class Testvc extends BaseVC {
   @override
   Widget makePageBody(BuildContext context) {
     return Center(
-        child: TextButton(
+        child: Column(
+      children: [
+        Container(
+          height: 50,
+        ),
+        TextButton(
             onPressed: () {
               Testvc2 aaa = Testvc2();
-              pushToVCFade(aaa);
+              //pushToVCFade(aaa);
+              pushToTransparentVCUpTo(aaa);
             },
-            child: Text("PUSH")));
+            child: Text("PUSH")),
+        TextButton(
+            onPressed: () {
+              hudShowLoading("loading");
+              hudShowSuccessMsg("success");
+              Future.delayed(Duration(seconds: 3), () {
+                hudDismiss();
+              });
+            },
+            child: Text("show loading")),
+        TextButton(
+            onPressed: () {
+              hudShowSuccessMsg("success");
+            },
+            child: Text("show success")),
+        TextButton(
+            onPressed: () {
+              hudShowInfoMsg("info");
+            },
+            child: Text("show info")),
+      ],
+    ));
   }
 }
 

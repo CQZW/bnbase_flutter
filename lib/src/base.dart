@@ -8,6 +8,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:logger/logger.dart';
 
+import 'zwhud.dart';
+
 ///视图控制器,定义基本的衔接问题.
 abstract class ViewCtr {
   BuildContext? _context;
@@ -131,6 +133,8 @@ abstract class BaseVC extends ViewCtr {
     );
     var l = [t];
 
+    l.addAll(mHUDs);
+
     t = Stack(
       children: l,
       fit: StackFit.expand,
@@ -209,6 +213,75 @@ abstract class BaseVC extends ViewCtr {
     if (mEnableKeyBoardHelper) return wapperForKeyBoard(body, context);
     return body;
   }
+
+  ///HUD弹出层列表,
+  List<Widget> mHUDs = [];
+
+  ///显示HUD加载中
+  void hudShowLoading(String msg) {
+    mHUDs.add(
+        HUDVC(hud: ZWHud(showType: 0, showMsg: msg)).getView(key: UniqueKey()));
+    updateUI();
+  }
+
+  VoidCallback? whenDismisscb;
+
+  ///显示HUD错误信息
+  Future<void> hudShowErrMsg(String msg) {
+    Key k = UniqueKey();
+    mHUDs.add(HUDVC(hud: ZWHud(showType: 2, showMsg: msg)).getView(key: k));
+    updateUI();
+    return autoDismissHUD(msg.length > 11 ? 3000 : 1500, k);
+  }
+
+  ///显示HUD 成功新
+  Future<void> hudShowSuccessMsg(String msg) {
+    Key k = UniqueKey();
+    mHUDs.add(HUDVC(hud: ZWHud(showType: 1, showMsg: msg)).getView(key: k));
+    updateUI();
+    return autoDismissHUD(msg.length > 11 ? 3000 : 1500, k);
+  }
+
+  ///HUD显示信息
+  Future<void> hudShowInfoMsg(String msg) {
+    Key k = UniqueKey();
+    mHUDs.add(HUDVC(hud: ZWHud(showType: 3, showMsg: msg)).getView(key: k));
+    updateUI();
+    return autoDismissHUD(msg.length > 11 ? 3000 : 1500, k);
+  }
+
+  ///HUD自动消失
+  Future<void> autoDismissHUD([int dealy = 3000, Key? key]) {
+    return Future.delayed(
+        Duration(milliseconds: dealy), () => this.hudDismiss(key));
+  }
+
+  ///消失HUD
+  Future<void> hudDismiss([Key? key]) {
+    HUDVC? ithudvc;
+
+    Widget? _i;
+    for (int j = 0; j < mHUDs.length; j++) {
+      var item = mHUDs[j];
+      _i = item;
+      if (key == item.key && item is BaseView) {
+        ithudvc = item.vc as HUDVC;
+        break;
+      }
+      if (j + 1 == mHUDs.length) {
+        //都最后了,那就最后一个
+        ithudvc = item is BaseView ? item.vc as HUDVC : null;
+      }
+    }
+    if (ithudvc != null) {
+      mHUDs.remove(_i);
+      updateUI();
+      return ithudvc.hidenHUD();
+    }
+    return Future.value();
+  }
+
+  ///这里封装几个常用的HUD
 
   ///页面名字,用于统计
   late String mPageName;
@@ -631,4 +704,29 @@ class FallbackCupertinoLocalisationsDelegate
 
   @override
   bool shouldReload(FallbackCupertinoLocalisationsDelegate old) => false;
+}
+
+///HUD 控制器
+class HUDVC extends ViewCtr {
+  final Widget hud;
+  bool show;
+  HUDVC({required this.hud, this.show = true});
+
+  @override
+  Widget getView({Key? key}) => BaseView(key: key, vc: this);
+
+  @override
+  Widget realBuildWidget(BuildContext context) {
+    return AnimatedOpacity(
+        duration: Duration(milliseconds: 250),
+        opacity: show ? 1 : 0,
+        child: hud);
+  }
+
+  ///隐藏HUD
+  Future<void> hidenHUD() {
+    show = false;
+    updateUI();
+    return Future.delayed(Duration(milliseconds: 250), () {});
+  }
 }
