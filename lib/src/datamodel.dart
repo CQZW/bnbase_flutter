@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,9 +61,10 @@ class SResBase<T> {
 }
 
 abstract class SAutoEx {
-  SAutoEx([Map<String, dynamic>? json]) {
-    if (json != null) fetchIt(json);
+  SAutoEx(Map<String, dynamic> json) {
+    fetchIt(json);
   }
+  SAutoEx.noValue();
 
   ///JSON->对象,自己必须实现
   void fetchIt(Map<String, dynamic> json);

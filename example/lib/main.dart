@@ -22,12 +22,24 @@ class Testvc extends BaseVC {
           height: 50,
         ),
         TextButton(
-            onPressed: () {
+            onPressed: () async {
               Testvc2 aaa = Testvc2();
-              //pushToVCFade(aaa);
-              pushToTransparentVCUpTo(aaa);
+              var v = await pushToVCFade(aaa);
+              vclog("push wait:$v");
             },
             child: Text("PUSH")),
+        TextButton(
+            onPressed: () {
+              Testvc2 aaa = Testvc2();
+              setToVC(aaa);
+            },
+            child: Text("SET")),
+        TextButton(
+            onPressed: () {
+              Testvc2 aaa = Testvc2();
+              setToVC(aaa);
+            },
+            child: Text("POP")),
         TextButton(
             onPressed: () {
               hudShowLoading("loading");
@@ -67,10 +79,20 @@ class Testvc2 extends BaseVC {
   @override
   Widget makePageBody(BuildContext context) {
     return Center(
-        child: TextButton(
+        child: Column(
+      children: [
+        TextButton(
             onPressed: () {
-              popBack();
+              Testvc2 vvv = Testvc2();
+              pushToVC(vvv);
             },
-            child: Text("POP")));
+            child: Text("SET")),
+        TextButton(
+            onPressed: () {
+              popBack("d");
+            },
+            child: Text("POP")),
+      ],
+    ));
   }
 }

@@ -19,11 +19,10 @@ abstract class ViewCtr {
 
   BaseState? _state;
 
+  BaseState? get mState => _state;
+
   ///获取媒体数据
   MediaQueryData get mMediaQueryData => MediaQuery.of(mContext!);
-
-  ///显示调试banner
-  bool get mShowDebugBanner => false;
 
   ///衔接state的 build 方法,将控件布局引入到控制器
   Widget vcBuildWidget(BuildContext context, BaseState state) {
@@ -35,10 +34,11 @@ abstract class ViewCtr {
   ///控制器的真正build方法
   Widget realBuildWidget(BuildContext context);
 
-  ///导出控制器真正的布局数据
+  ///导出控制器真正的布局数据,和flutter其他控件衔接的地方
   Widget getView({Key? key});
 
   ///控制器更新数据,就是setstate
+  // ignore: invalid_use_of_protected_member
   void updateUI() => _state?.setState(() {});
 
   @mustCallSuper
@@ -120,6 +120,9 @@ abstract class BaseVC extends ViewCtr {
   ///页面的背景颜色,透明,可以制作半透明的控制器
   Color? mBackGroudColor;
 
+  ///显示调试banner
+  bool get mShowDebugBanner => false;
+
   bool get mIsNavVC => _mNavCtr == this;
 
   ///创建主要的控件部分,导航栏,tabbar,返回按钮,右侧按钮,标题等,底部tabbar由外部创建传入即可
@@ -146,9 +149,6 @@ abstract class BaseVC extends ViewCtr {
     ///这里如果是完全没有导航栏的项目,返回 Scaffold ,如果有导航栏又需要全屏HUD就需要MaterialApp
     ///如果有了 MaterialApp 导航相关估计也有问题
   }
-
-  ///监听导航变化
-  List<NavigatorObserver> getNavObservers() => [];
 
   ///当获取到区域信息之后的回调
   Locale? onGetLocalInfo(Locale? locale, Iterable<Locale>? supportedLocales) {
@@ -287,7 +287,7 @@ abstract class BaseVC extends ViewCtr {
   late String mPageName;
 
   ///用于路由的页面KEY
-  String get mPageKey => mPageName;
+  String get mPageKey => '$mPageName.${describeIdentity(this)}';
 
   ///左边返回按钮被点击之后
   void onLeftBtClicked() {}
@@ -310,6 +310,15 @@ abstract class BaseVC extends ViewCtr {
     }
     to._mNavCtr = _mNavCtr;
     return _mNavCtr!.pushToVC(to);
+  }
+
+  ///替换当前VC,并且有返回异步返回值
+  void setToVC(BaseVC to) {
+    if (_mNavCtr == null) {
+      log("没有导航控制器");
+    }
+    to._mNavCtr = _mNavCtr;
+    return _mNavCtr!.setToVC(to);
   }
 
   ///返回上一级,true表示成功,false表示无法返回,v默认是mRetVal
@@ -408,12 +417,25 @@ class BaseNavVC extends BaseVC {
     return pushToPage(RouterPage.createRouterPageFromVC(to));
   }
 
+  void setToVC(BaseVC to) {
+    return setToPage(RouterPage.createRouterPageFromVC(to));
+  }
+
   ///PUSH到路由页面
   Future<dynamic> pushToPage(RouterPage page) {
     _mPages.add(page);
     _mPages = _mPages.toList();
     mRouterDelegate.notifyListeners();
     return page.getPopValue;
+  }
+
+  void setToPage(RouterPage page) {
+    if (_mPages.length == 1) return;
+    RouterPage l = _mPages.removeLast();
+    page.appendComp(l.getComp);
+    _mPages.add(page);
+    _mPages = _mPages.toList();
+    mRouterDelegate.notifyListeners();
   }
 
   ///退回上一级,返回true表示已经退回,否则无法退回
@@ -442,6 +464,7 @@ class BaseNavVC extends BaseVC {
     throw UnimplementedError();
   }
 
+  ///浏览器地址变化
   Future<void> rsetNewRoutePath(String configuration) {
     // TODO: implement setNewRoutePath
     throw UnimplementedError();
@@ -497,7 +520,10 @@ typedef RouterPageCreateFunc = Route Function(
 class RouterPage extends Page {
   final RouterPageCreateFunc routerCreator;
   final BaseVC vc;
-  final Completer _comp = Completer();
+  Completer? _comp;
+
+  Completer? get getComp => _comp;
+
   RouterPage(LocalKey key, this.vc, this.routerCreator) : super(key: key);
 
   @factory
@@ -550,10 +576,19 @@ class RouterPage extends Page {
   }
 
   ///在PUSH的时候等待 返回值
-  Future<dynamic> get getPopValue => _comp.future;
+  Future<dynamic> get getPopValue {
+    if (_comp == null) _comp = Completer();
+    return _comp!.future;
+  }
 
   ///真正准备返回了,设置返回值回去了
-  void doPop(dynamic? v) => _comp.complete(v);
+  void doPop(dynamic? v) => _comp?.complete(v);
+
+  ///附加一个完成对象,比如settovc的时候,如果新VC替换了当前VC,新VC需要把之前的完成对象接手过来
+  ///万一有人在等待当前VC的完成对象,
+  void appendComp(Completer? lastvccomp) {
+    _comp = lastvccomp;
+  }
 
   @override
   Route createRoute(BuildContext context) =>

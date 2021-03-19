@@ -60,8 +60,8 @@ abstract class NetWapper {
   Future<String> getVersion();
 
   ///请求之前做些额外处理,比如数据加密
-  Future<Map<String, dynamic>> preDeal(
-      String path, Map<String, dynamic> param) async {
+  Future<Map<String, dynamic>?> preDeal(
+      String path, Map<String, dynamic>? param) async {
     ///如果需要加密,这里处理,只加密data字段
     //r["data"] = json.encode(param != null ? param : Map());
     //r["data"] = param != null ? param : Map();
@@ -71,7 +71,7 @@ abstract class NetWapper {
 
   ///预处理header,公共参数放到header里面
   Future<Map<String, dynamic>> preHeader(
-      String path, Map<String, dynamic> param) async {
+      String path, Map<String, dynamic>? param) async {
     Map<String, dynamic> r = Map<String, dynamic>();
     r["version"] = await getVersion();
     r["lang"] = await getLang();
@@ -95,11 +95,11 @@ abstract class NetWapper {
     return r;
   }
 
-  Future<SResBase> postPath(String path, Map<String, dynamic> param) async {
+  Future<SResBase> postPath(String path, Map<String, dynamic>? param) async {
     try {
       String url = makeApiPath(path);
-      var reqparam = await preDeal(path, param);
-      var header = await preHeader(path, param);
+      Map<String, dynamic>? reqparam = await preDeal(path, param);
+      Map<String, dynamic>? header = await preHeader(path, param);
       log("req url:" +
           url +
           " param:" +
@@ -109,8 +109,8 @@ abstract class NetWapper {
       Response<String> resb = await dio.post(url,
           queryParameters: reqparam, options: Options(headers: header));
 
-      log("resb url:" + url + " data:" + resb.data);
-      return SResBase.baseWithData(await dealPost(resb.data));
+      log("resb url:" + url + " data:" + (resb.data ?? ''));
+      return SResBase.baseWithData(await dealPost(resb.data ?? ''));
     } catch (e) {
       log("resb exp:" + e.toString());
       return SResBase.infoWithErrorString("网络请求异常", 3);
