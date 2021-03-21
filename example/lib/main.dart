@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:bnbase_flutter/bnbase_flutter.dart';
 import 'package:flutter/material.dart';
 
@@ -5,6 +7,7 @@ void main() {
   Testvc xxx = Testvc();
 
   BaseNavVC vvvv = BaseNavVC(xxx);
+
   runApp(vvvv.getView());
 }
 

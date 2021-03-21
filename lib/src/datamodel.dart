@@ -61,13 +61,18 @@ class SResBase<T> {
 }
 
 abstract class SAutoEx {
-  SAutoEx(Map<String, dynamic> json) {
-    fetchIt(json);
+  SAutoEx([Map<String, dynamic>? json]) {
+    if (json != null)
+      fetchIt(json);
+    else
+      initIt();
   }
-  SAutoEx.noValue();
 
   ///JSON->对象,自己必须实现
   void fetchIt(Map<String, dynamic> json);
+
+  ///如果没有值,给个初始化机会
+  void initIt() {}
 
   ///对象 -> JSON,自己必须实现
   Map<String, dynamic> toJson();
