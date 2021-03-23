@@ -45,11 +45,13 @@ class Testvc extends BaseVC {
             child: Text("POP")),
         TextButton(
             onPressed: () {
+              Testvc2 aaa = Testvc2();
+              pushToTransparentVCUpTo(aaa);
+            },
+            child: Text("pushToTransparentVCUpTo")),
+        TextButton(
+            onPressed: () {
               hudShowLoading("loading");
-              hudShowSuccessMsg("success");
-              Future.delayed(Duration(seconds: 3), () {
-                hudDismiss();
-              });
             },
             child: Text("show loading")),
         TextButton(

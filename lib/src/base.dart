@@ -219,66 +219,55 @@ abstract class BaseVC extends ViewCtr {
 
   ///显示HUD加载中
   void hudShowLoading(String msg) {
-    mHUDs.add(
-        HUDVC(hud: ZWHud(showType: 0, showMsg: msg)).getView(key: UniqueKey()));
+    mHUDs.add(ZWHud(showType: 0, showMsg: msg));
     updateUI();
   }
 
-  VoidCallback? whenDismisscb;
-
   ///显示HUD错误信息
-  Future<void> hudShowErrMsg(String msg) {
+  Future<int> hudShowErrMsg(String msg) {
     Key k = UniqueKey();
-    mHUDs.add(HUDVC(hud: ZWHud(showType: 2, showMsg: msg)).getView(key: k));
+    Widget w = ZWHud(showType: 2, showMsg: msg, key: k);
+    mHUDs.add(w);
     updateUI();
-    return autoDismissHUD(msg.length > 11 ? 3000 : 1500, k);
+    return autoDismissHUD(k);
   }
 
   ///显示HUD 成功新
-  Future<void> hudShowSuccessMsg(String msg) {
+  Future<int> hudShowSuccessMsg(String msg) {
     Key k = UniqueKey();
-    mHUDs.add(HUDVC(hud: ZWHud(showType: 1, showMsg: msg)).getView(key: k));
+    Widget w = ZWHud(showType: 1, showMsg: msg, key: k);
+    mHUDs.add(w);
     updateUI();
-    return autoDismissHUD(msg.length > 11 ? 3000 : 1500, k);
+    return autoDismissHUD(k);
   }
 
   ///HUD显示信息
-  Future<void> hudShowInfoMsg(String msg) {
+  Future<int> hudShowInfoMsg(String msg) {
     Key k = UniqueKey();
-    mHUDs.add(HUDVC(hud: ZWHud(showType: 3, showMsg: msg)).getView(key: k));
+    Widget w = ZWHud(showType: 3, showMsg: msg, key: k);
+    mHUDs.add(w);
     updateUI();
-    return autoDismissHUD(msg.length > 11 ? 3000 : 1500, k);
+    return autoDismissHUD(k);
   }
 
   ///HUD自动消失
-  Future<void> autoDismissHUD([int dealy = 3000, Key? key]) {
+  Future<int> autoDismissHUD([Key? key, int retv = 0, int dealy = 3000]) {
     return Future.delayed(
-        Duration(milliseconds: dealy), () => this.hudDismiss(key));
+        Duration(milliseconds: dealy), () => this.hudDismiss(key, retv));
   }
 
   ///消失HUD
-  Future<void> hudDismiss([Key? key]) {
-    HUDVC? ithudvc;
-
-    Widget? _i;
+  Future<int> hudDismiss([Key? key, int retv = 0]) async {
     for (int j = 0; j < mHUDs.length; j++) {
       var item = mHUDs[j];
-      _i = item;
-      if (key == item.key && item is BaseView) {
-        ithudvc = item.vc as HUDVC;
+      if (key == item.key || j + 1 == mHUDs.length) {
+        mHUDs.remove(item); //如果找到了或者最后一个了就移除了吧
+        updateUI();
         break;
       }
-      if (j + 1 == mHUDs.length) {
-        //都最后了,那就最后一个
-        ithudvc = item is BaseView ? item.vc as HUDVC : null;
-      }
     }
-    if (ithudvc != null) {
-      mHUDs.remove(_i);
-      updateUI();
-      return ithudvc.hidenHUD();
-    }
-    return Future.value();
+
+    return Future.value(retv);
   }
 
   ///这里封装几个常用的HUD
@@ -739,29 +728,4 @@ class FallbackCupertinoLocalisationsDelegate
 
   @override
   bool shouldReload(FallbackCupertinoLocalisationsDelegate old) => false;
-}
-
-///HUD 控制器
-class HUDVC extends ViewCtr {
-  final Widget hud;
-  bool show;
-  HUDVC({required this.hud, this.show = true});
-
-  @override
-  Widget getView({Key? key}) => BaseView(key: key, vc: this);
-
-  @override
-  Widget realBuildWidget(BuildContext context) {
-    return AnimatedOpacity(
-        duration: Duration(milliseconds: 250),
-        opacity: show ? 1 : 0,
-        child: hud);
-  }
-
-  ///隐藏HUD
-  Future<void> hidenHUD() {
-    show = false;
-    updateUI();
-    return Future.delayed(Duration(milliseconds: 250), () {});
-  }
 }
