@@ -111,6 +111,13 @@ abstract class NetWapper {
 
       log("resb url:" + url + " data:" + (resb.data ?? ''));
       return SResBase.baseWithData(await dealPost(resb.data ?? ''));
+    } on DioError catch (edio) {
+      log("resb dio exp:" + edio.toString());
+      if (edio.type == DioErrorType.CONNECT_TIMEOUT ||
+          edio.type == DioErrorType.SEND_TIMEOUT ||
+          edio.type == DioErrorType.RECEIVE_TIMEOUT)
+        return SResBase.infoWithErrorString("网络请求超时", 4);
+      return SResBase.infoWithErrorString("网络请求异常", 3);
     } catch (e) {
       log("resb exp:" + e.toString());
       return SResBase.infoWithErrorString("网络请求异常", 3);

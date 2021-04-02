@@ -140,7 +140,6 @@ abstract class BaseVC extends ViewCtr {
 
     t = Stack(
       children: l,
-      fit: StackFit.expand,
       alignment: Alignment.center,
     );
     return t;
@@ -260,7 +259,7 @@ abstract class BaseVC extends ViewCtr {
   Future<int> hudDismiss([Key? key, int retv = 0]) async {
     for (int j = 0; j < mHUDs.length; j++) {
       var item = mHUDs[j];
-      if (key == item.key || j + 1 == mHUDs.length) {
+      if ((key == item.key && key != null) || j + 1 == mHUDs.length) {
         mHUDs.remove(item); //如果找到了或者最后一个了就移除了吧
         updateUI();
         break;
