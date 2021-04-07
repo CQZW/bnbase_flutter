@@ -386,6 +386,21 @@ class BaseNavVC extends BaseVC {
     );
   }
 
+  ///路由变化了,PUSH了
+  void didPush(String prePage, String newpage) {
+    vclog("didPush:$prePage -> $newpage");
+  }
+
+  ///路由变化了,SET了
+  void didRelace(String prePage, String newpage) {
+    vclog("didRelace:$prePage -> $newpage");
+  }
+
+  ///路由变化了,返回了
+  void didPop(String prepage, String nowPage) {
+    vclog("didPop:$prepage -> $nowPage");
+  }
+
   ///这里截获的是导航栏上面的返回按钮
   bool _onPopPage(Route<dynamic> route, dynamic result) {
     // if (_mPages.length <= 1) return false;
@@ -406,11 +421,13 @@ class BaseNavVC extends BaseVC {
   }
 
   void setToVC(BaseVC to) {
+    didRelace(_mPages.last.vc.mPageName, to.mPageName);
     return setToPage(RouterPage.createRouterPageFromVC(to));
   }
 
   ///PUSH到路由页面
   Future<dynamic> pushToPage(RouterPage page) {
+    didPush(_mPages.last.vc.mPageName, page.vc.mPageName);
     _mPages.add(page);
     _mPages = _mPages.toList();
     mRouterDelegate.notifyListeners();
@@ -433,6 +450,7 @@ class BaseNavVC extends BaseVC {
     _mPages = _mPages.toList();
     mRouterDelegate.notifyListeners();
     p.doPop(v);
+    didPop(p.vc.mPageName, _mPages.last.vc.mPageName);
     return true;
   }
 
@@ -488,7 +506,7 @@ class BaseRouterDelegate extends RouterDelegate<String>
       vc.rsetNewRoutePath(configuration);
 }
 
-///路由数据解析
+///路由数据解析,主要是WEB地址的时候,能够根据地址还原数据,
 class BaseRouteInformationParser extends RouteInformationParser<String> {
   @override
   Future<String> parseRouteInformation(RouteInformation routeInformation) {
