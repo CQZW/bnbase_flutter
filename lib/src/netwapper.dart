@@ -107,7 +107,9 @@ abstract class NetWapper {
           " header:" +
           header.toString());
       Response<String> resb = await dio.post(url,
-          queryParameters: reqparam, options: Options(headers: header));
+          data: reqparam,
+          //queryParameters: reqparam,
+          options: Options(headers: header));
 
       log("resb url:" + url + " data:" + (resb.data ?? ''));
       return SResBase.baseWithData(await dealPost(resb.data ?? ''));

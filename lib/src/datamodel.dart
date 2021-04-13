@@ -75,8 +75,8 @@ abstract class SAutoEx {
   ///如果没有值,给个初始化机会
   void initIt() {}
 
-  ///对象 -> JSON,自己必须实现
-  Map<String, dynamic> toJson();
+  ///对象 -> JSON,默认返回了,否则不常用的必须实现,也麻烦
+  Map<String, dynamic> toJson() => <String, dynamic>{};
 
   ///将自己存储到本地
   Future<bool> dumpSelf(String key) async {

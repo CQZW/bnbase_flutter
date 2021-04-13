@@ -98,14 +98,23 @@ abstract class ViewCtr {
 abstract class BaseVC extends ViewCtr {
   static String mAppname = "APP_NAME";
 
-  final Logger _logger = Logger(
+  static Logger _logger = Logger(
       printer: PrettyPrinter(
     methodCount: 1,
     printTime: true,
   ));
 
+  static void stLogD(String msg) {
+    _logger.d(msg);
+  }
+
+  static void stLogE(String msg) {
+    _logger.e(msg);
+  }
+
   @override
-  vclog(String msg) => _logger.d(msg);
+  vclog(String msg) => stLogD(msg);
+  vcloge(String msg) => stLogE(msg);
 
   //获取控制器对应的视图
   @override
